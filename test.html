@@ -1,0 +1,212 @@
+	<!DOCTYPE html>
+	<html lang="zh-CN">
+	<head>
+	<meta charset="UTF-8">
+	<title>智谱AI调用示例</title>
+	<style>
+	 body {
+	     font-family: Arial, sans-serif;
+	     display: flex;
+	     flex-direction: column;
+	     align-items: center;
+	     justify-content: center;
+	     height: 100vh;
+	     margin: 0;
+	 }
+	 h1, h2 {
+	     text-align: center;
+	 }
+	 form {
+	     display: flex;
+	     flex-direction: column;
+	     align-items: center;
+	     width: 100%;
+	     max-width: 600px;
+	 }
+	 label {
+	     margin-bottom: 5px;
+	 }
+	 textarea {
+	     width: 100%;
+	     max-width: 600px;
+	     height: 150px;
+	     margin-bottom: 20px;
+	     padding: 10px;
+	     font-size: 16px;
+	     border: 1px solid #ccc;
+	     border-radius: 5px;
+	 }
+	 select {
+	     width: 100%;
+	     max-width: 600px;
+	     padding: 10px;
+	     font-size: 16px;
+	     border: 1px solid #ccc;
+	     border-radius: 5px;
+	     margin-bottom: 20px;
+	 }
+	 input[type="submit"] {
+	     padding: 10px 20px;
+	     font-size: 16px;
+	     background-color: #007BFF;
+	     color: white;
+	     border: none;
+	     border-radius: 5px;
+	     cursor: pointer;
+	 }
+	 input[type="submit"]:hover {
+	     background-color: #0056b3;
+	 }
+	 .model-description {
+	    max-width: 600px;
+	    border: 1px solid #ccc;
+	    padding: 10px;
+	    border-radius: 5px;
+	    background-color: #f9f9f9;
+	}
+	#chatHistory {
+	    max-width: 600px;
+	    border: 1px solid #ccc;
+	    padding: 10px;
+	    border-radius: 5px;
+	    background-color: #f9f9f9;
+	    overflow-y: auto; /* 允许垂直滚动 */
+	    resize: vertical; /* 允许垂直方向上的伸缩 */
+	    height: 100px; /* 初始高度 */
+	    max-height: 500px; /* 最大高度 */
+	}
+	.chat-message {
+	    margin: 5px 0;
+	}
+	</style>
+	</head>
+	<body>
+	<h1>智谱AI调用示例</h1>
+	<form id="aiForm">
+	<label for="apiKey">API Key:</label><br>
+	<input type="text" id="apiKey" required><br><br>
+	<label for="model">选择模型:</label><br>
+	<select id="model" required onchange="updateModelDescription()">
+	    <option value="glm-4-plus">GLM-4-Plus New</option>
+	    <option value="glm-4-0520">GLM-4-0520</option>
+	    <option value="glm-4-long">GLM-4-Long</option>
+	    <option value="glm-4-airx">GLM-4-AirX</option>
+	    <option value="glm-4-air">GLM-4-Air</option>
+	    <option value="glm-4-flashx">GLM-4-FlashX</option>
+	    <option value="glm-4-flash">GLM-4-Flash</option>
+	    <option value="glm-4-alltools">GLM-4-AllTools</option>
+	    <option value="glm-4v-flash">GLM-4V-Flash New</option>
+	    <option value="glm-4v-plus">GLM-4V-Plus</option>
+	    <option value="glm-4v">GLM-4V</option>
+	    <option value="cogvideox">CogVideoX</option>
+	    <option value="cogvideox-flash">CogVideoX-Flash</option>
+	    <option value="cogview-3-plus">CogView-3-Plus</option>
+	    <option value="cogview-3-flash">CogView-3-Flash</option>
+	    <option value="cogview-3">CogView-3</option>
+	    <option value="embedding-3">Embedding-3</option>
+	    <option value="charglm-4">CharGLM-4</option>
+	    <option value="emohaa">Emohaa</option>
+	    <option value="codegeex-4">CodeGeeX-4</option>
+	    <option value="rerank">Rerank</option>
+	</select><br><br>
+	<label for="question">提问内容:</label><br>
+	<textarea id="question" required></textarea><br><br>
+	<input type="submit" value="发送请求">
+	<button type="button" onclick="clearChatHistory()">清除历史记录</button>
+	</form>
+	<div class="model-description" id="modelDescription"></div>
+	<h2>对话历史：</h2>
+	<div id="chatHistory"></div>
+	<h2>响应内容：</h2>
+	<textarea id="responseContent" readonly></textarea>
+	<script>
+	const modelDescriptions = {
+	    "glm-4-plus": "高智能旗舰: 性能全面提升，长文本和复杂任务能力显著增强",
+	    "glm-4-0520": "高智能模型：适用于处理高度复杂和多样化的任务",
+	    "glm-4-long": "超长输入：专为处理超长文本和记忆型任务设计",
+	    "glm-4-airx": "极速推理：具有超快的推理速度和强大的推理效果",
+	    "glm-4-air": "高性价比：推理能力和价格之间最平衡的模型",
+	    "glm-4-flashx": "高速低价：Flash增强版本，超快推理速度",
+	    "glm-4-flash": "免费调用：智谱AI首个免费API，零成本调用大模型",
+	    "glm-4-alltools": "Agent模型：自主规划和执行复杂任务",
+	    "glm-4v-flash": "免费模型：具备强大的图片理解能力",
+	    "glm-4v-plus": "视频和图像理解：具备视频内容和多图片的理解能力",
+	    "glm-4v": "图像理解：具备图像理解能力和推理能力",
+	    "cogvideox": "视频生成：输入文本或图片即可轻松制作视频",
+	    "cogvideox-flash": "视频生成：免费且好用的视频生成模型，具备强大的视频生成能力",
+	    "cogview-3-plus": "图片生成：根据用户文字描述生成高质量图像，支持多图片尺寸",
+	    "cogview-3-flash": "图片生成：免费的图像生成模型，可以生成符合指令且美学评分更高的图像",
+	    "cogview-3": "图片生成：根据用户文字描述快速、精准生成图像",
+	    "embedding-3": "最新模型：支持自定义向量维度",
+	    "charglm-4": "拟人模型：适用于情感陪伴和虚拟角色",
+	    "emohaa": "心理模型：具备专业咨询能力，帮助用户理解情感并应对情绪问题",
+	    "codegeex-4": "代码模型：适用于代码自动补全任务",
+	    "rerank": "重排序模型：计算文本之间的 score 值，对召回结果进行重排序"
+	};
+	function updateModelDescription() {
+	    const modelSelect = document.getElementById('model');
+	    const selectedModel = modelSelect.value;
+	    const description = modelDescriptions[selectedModel];
+	    document.getElementById('modelDescription').innerText = description;
+	}
+	// 初始化描述
+	updateModelDescription();
+	// 初始化对话历史
+	function initChatHistory() {
+	    const chatHistory = localStorage.getItem('chatHistory');
+	    if (chatHistory) {
+	        document.getElementById('chatHistory').innerHTML = chatHistory;
+	    }
+	}
+	// 更新对话历史
+	function updateChatHistory(role, content) {
+	    const chatHistoryDiv = document.getElementById('chatHistory');
+	    const messageDiv = document.createElement('div');
+	    messageDiv.className = 'chat-message';
+	    messageDiv.textContent = `${role}: ${content}`;
+	    chatHistoryDiv.appendChild(messageDiv);
+	    localStorage.setItem('chatHistory', chatHistoryDiv.innerHTML);
+	}
+	// 清除对话历史
+	function clearChatHistory() {
+	    localStorage.removeItem('chatHistory');
+	    document.getElementById('chatHistory').innerHTML = '';
+	}
+	// 在页面加载时初始化对话历史
+	window.onload = initChatHistory;
+	document.getElementById('aiForm').addEventListener('submit', function(event) {
+	    event.preventDefault(); // 阻止表单默认提交行为
+	    var apiKey = document.getElementById('apiKey').value; // 获取输入的API Key
+	    var model = document.getElementById('model').value; // 获取选中的模型
+	    var question = document.getElementById('question').value;
+	    updateChatHistory('用户', question);
+	    var messages = [
+	        {
+	            "role": "user",
+	            "content": question
+	        }
+	    ];
+	    var xhr = new XMLHttpRequest();
+	    xhr.open('POST', 'https://open.bigmodel.cn/api/paas/v4/chat/completions', true);
+	    xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
+	    xhr.setRequestHeader('Content-Type', 'application/json');
+	    xhr.onreadystatechange = function() {
+	        if (xhr.readyState === 4 && xhr.status === 200) {
+	            var response = JSON.parse(xhr.responseText);
+	            var content = response.choices[0].message.content;
+	            document.getElementById('responseContent').value = content;
+	            // 更新对话历史
+	            updateChatHistory('AI', content);
+	        } else if (xhr.readyState === 4) {
+	            alert('请求失败:\n' + xhr.responseText);
+	        }
+	    };
+	    var data = {
+	        model: model,
+	        messages: messages
+	    };
+	    xhr.send(JSON.stringify(data));
+	});
+	</script>
+	</body>
+	</html>
